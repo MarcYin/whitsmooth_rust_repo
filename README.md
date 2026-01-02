@@ -124,6 +124,17 @@ This makes `λ` more comparable across datasets.
 
 ---
 
+## Handling near-duplicate x (recommended for float32)
+
+If your `x` has **very small gaps** (near-duplicate sampling positions), the divided-difference penalty can become
+ill-conditioned (especially in float32). Options:
+
+- Use `robust_whittaker_irls_f64` (most stable).
+- Set `merge_x_tol` to merge adjacent points within a tolerance (e.g. `merge_x_tol=1e-2` in input-x units).
+- Increase `eps` and/or `ridge` for float32.
+
+---
+
 ## API overview
 
 All functions use **series-first layout** for speed:
@@ -133,8 +144,8 @@ All functions use **series-first layout** for speed:
 
 ### Build penalty band
 
-- `build_pb_f64(x, d, normalize=None, eps=1e-12) -> (pb, k)`
-- `build_pb_f32(x, d, normalize=None, eps=1e-6) -> (pb, k)`
+- `build_pb_f64(x, d=2, normalize=None, eps=None) -> (pb, k)`
+- `build_pb_f32(x, d=2, normalize=None, eps=None) -> (pb, k)`
 
 Returns:
 - `pb`: array of shape `(k+1, T)` storing lower band of `P = D^T D`
@@ -149,19 +160,20 @@ Parameters (both dtypes):
 - `x`: strictly increasing sampling positions (length `T`)
 - `y_st`: `(S,T)` observations (NaNs allowed; they will be treated as missing)
 - `w_base_st`: `(S,T)` base weights (optional; if provided, NaNs in y are forced to 0 weight)
-- `lam`: smoothing parameter λ
-- `d`: difference order (typical 1..6)
-- `iterations`: IRLS iterations (typical 3..10)
-- `weighting`: one of `"tukey"|"huber"|"cauchy"|"welsch"|"fair"|"hampel"`
-- `scale`: `"mad"` or `"huber"`
-- `ridge`: small diagonal stabilizer (e.g. 1e-10 for f64, 1e-6 for f32)
-- `normalize`: None / `"mean"` / `"median"`
-- `eps`: numerical floor for stability
-- `parallel`: parallelize across series (Rayon). Recommended when S is large.
+- `lam`: smoothing parameter λ (default: `10`)
+- `d`: difference order (default: `2`)
+- `iterations`: IRLS iterations (default: `1`; typical 3..10)
+- `weighting`: one of `"tukey"|"huber"|"cauchy"|"welsch"|"fair"|"hampel"` (default: `"tukey"`)
+- `scale`: `"mad"` or `"huber"` (default: `"mad"`)
+- `ridge`: small diagonal stabilizer (default: `1e-10`; f32 may need larger values on difficult grids)
+- `normalize`: None / `"mean"` / `"median"` (default: `"mean"`)
+- `eps`: numerical floor for stability (default: `1e-10`; f32 may need larger values on difficult grids)
+- `merge_x_tol`: optional tolerance (in input-x units) to merge near-duplicate sampling points by base-weighted averaging before solving
+- `parallel`: parallelize across series (Rayon). Recommended when S is large. (default: `True`)
 - `tuning`: optional tuple
   - for Tukey/Huber/Cauchy/Welsch/Fair: `(0,0,c)`
   - for Hampel: `(a,b,c)`
-- `return_weights`: return final `w_total_st` as well
+- `return_weights`: return final `w_total_st` as well (default: `False`)
 
 ---
 
@@ -213,6 +225,7 @@ z32 = whitsmooth_rust.robust_whittaker_irls_f32(
     ridge=1e-6,
     normalize="mean",
     eps=1e-6,
+    merge_x_tol=None,
     parallel=True,
     tuning=None,
     return_weights=False
@@ -234,6 +247,7 @@ z_ts = z_st.T
 - The solver is **SPD banded Cholesky**, per series, with half-bandwidth `k=2d`.
 - Parallelization is across series `S`.
 - Float32 can be significantly faster and reduce memory footprint for very large `S`.
+- For highly irregular / near-duplicate `x`, prefer `merge_x_tol` or `robust_whittaker_irls_f64` (float32 may fallback to float64 internally).
 
 ---
 
@@ -246,8 +260,8 @@ MIT
 
 If you don't need IRLS robustness, you can run a single solve (much cheaper):
 
-- `whittaker_solve_f64(x, y_st, w_base_st, lam, d, ridge, normalize=None, eps=1e-12, parallel=True) -> z_st`
-- `whittaker_solve_f32(x, y_st, w_base_st, lam, d, ridge, normalize=None, eps=1e-6, parallel=True) -> z_st`
+- `whittaker_solve_f64(x, y_st, w_base_st=None, lam=10.0, d=2, ridge=1e-10, normalize="mean", eps=1e-10, parallel=True) -> z_st`
+- `whittaker_solve_f32(x, y_st, w_base_st=None, lam=10.0, d=2, ridge=1e-10, normalize="mean", eps=1e-10, parallel=True) -> z_st`
 
 These solve:
 \[
