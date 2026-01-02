@@ -1,5 +1,10 @@
 # whitsmooth_rust
 
+[![PyPI](https://img.shields.io/pypi/v/whitsmooth_rust)](https://pypi.org/project/whitsmooth_rust/)
+[![Python](https://img.shields.io/pypi/pyversions/whitsmooth_rust)](https://pypi.org/project/whitsmooth_rust/)
+[![License](https://img.shields.io/pypi/l/whitsmooth_rust)](https://pypi.org/project/whitsmooth_rust/)
+[![Wheels](https://github.com/MarcYin/whitsmooth_rust_repo/actions/workflows/wheels.yml/badge.svg)](https://github.com/MarcYin/whitsmooth_rust_repo/actions/workflows/wheels.yml)
+
 A **fast, compiled** (no JIT warmup) implementation of a **batched robust Whittaker smoother** with **divided differences**
 in **Rust**, exposed to Python via **PyO3**.
 
@@ -131,13 +136,28 @@ Parameters (both dtypes):
 
 ---
 
-## Installation / compilation
+## Installation
 
-You need Rust and maturin.
+### Install from PyPI (recommended)
 
 ```bash
-pip install maturin
-cd whitsmooth_rust
+python -m pip install --upgrade pip
+python -m pip install whitsmooth_rust
+```
+
+Wheels are built in CI for:
+
+- **Python**: CPython 3.9+
+- **Platforms**: Linux (manylinux x86_64), macOS (x86_64 + arm64), Windows (x86_64)
+
+### Build locally (from source)
+
+If you are on an unsupported platform (or want to build the latest code), install Rust and `maturin`:
+
+```bash
+python -m pip install maturin
+git clone https://github.com/MarcYin/whitsmooth_rust_repo.git
+cd whitsmooth_rust_repo
 maturin develop --release
 ```
 
