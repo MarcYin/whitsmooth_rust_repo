@@ -1,0 +1,14 @@
+[package]
+name = "whitsmooth_rust"
+version = "0.2.0"
+edition = "2021"
+
+[lib]
+name = "whitsmooth_rust"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.27", features = ["extension-module"] }
+numpy = "0.27"
+ndarray = "0.15"
+rayon = "1.10"
