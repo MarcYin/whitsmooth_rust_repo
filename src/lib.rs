@@ -1132,14 +1132,15 @@ fn whittaker_solve_f32<'py>(
 /// parallel : bool, default=True
 /// tuning : tuple or None, optional
 /// return_weights : bool, default=False
-/// merge_x_tol : float or None, optional
+/// merge_x_tol : float or None, default=1e-2
+///     Merge adjacent `x` points when `x[i+1]-x[i] <= merge_x_tol`. Set to `None` (or `0.0`) to disable.
 ///
 /// Returns
 /// -------
 /// z_st : ndarray[float64], shape (S, T)
 /// or (z_st, w_total_st) if return_weights=True
 #[pyfunction]
-#[pyo3(signature = (x, y_st, w_base_st=None, lam=10.0, d=2, iterations=1, weighting="tukey", scale="mad", ridge=1e-10, normalize="mean", eps=1e-10, parallel=true, tuning=None, return_weights=false, merge_x_tol=None))]
+#[pyo3(signature = (x, y_st, w_base_st=None, lam=10.0, d=2, iterations=1, weighting="tukey", scale="mad", ridge=1e-10, normalize="mean", eps=1e-10, parallel=true, tuning=None, return_weights=false, merge_x_tol=1e-2))]
 fn robust_whittaker_irls_f64<'py>(
     py: Python<'py>,
     x: PyReadonlyArray1<'py, f64>,
@@ -1313,14 +1314,15 @@ fn robust_whittaker_irls_f64<'py>(
 /// parallel : bool, default=True
 /// tuning : tuple or None, optional
 /// return_weights : bool, default=False
-/// merge_x_tol : float or None, optional
+/// merge_x_tol : float or None, default=1e-2
+///     Merge adjacent `x` points when `x[i+1]-x[i] <= merge_x_tol`. Set to `None` (or `0.0`) to disable.
 ///
 /// Returns
 /// -------
 /// z_st : ndarray[float32], shape (S, T)
 /// or (z_st, w_total_st) if return_weights=True
 #[pyfunction]
-#[pyo3(signature = (x, y_st, w_base_st=None, lam=10.0_f32, d=2, iterations=1, weighting="tukey", scale="mad", ridge=1e-10_f32, normalize="mean", eps=1e-10_f32, parallel=true, tuning=None, return_weights=false, merge_x_tol=None))]
+#[pyo3(signature = (x, y_st, w_base_st=None, lam=10.0_f32, d=2, iterations=1, weighting="tukey", scale="mad", ridge=1e-10_f32, normalize="mean", eps=1e-10_f32, parallel=true, tuning=None, return_weights=false, merge_x_tol=1e-2_f32))]
 fn robust_whittaker_irls_f32<'py>(
     py: Python<'py>,
     x: PyReadonlyArray1<'py, f32>,

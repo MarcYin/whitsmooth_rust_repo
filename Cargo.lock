@@ -295,7 +295,7 @@ checksum = "7264e107f553ccae879d21fbea1d6724ac785e8c3bfc762137959b5802826ef3"
 
 [[package]]
 name = "whitsmooth_rust"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "ndarray",
  "numpy",

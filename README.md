@@ -127,10 +127,11 @@ This makes `λ` more comparable across datasets.
 ## Handling near-duplicate x (recommended for float32)
 
 If your `x` has **very small gaps** (near-duplicate sampling positions), the divided-difference penalty can become
-ill-conditioned (especially in float32). Options:
+ill-conditioned (especially in float32). By default, the robust solvers use `merge_x_tol=1e-2` (set `merge_x_tol=None`
+to disable). Options:
 
 - Use `robust_whittaker_irls_f64` (most stable).
-- Set `merge_x_tol` to merge adjacent points within a tolerance (e.g. `merge_x_tol=1e-2` in input-x units).
+- Tune `merge_x_tol` to merge adjacent points within a tolerance (in input-x units).
 - Increase `eps` and/or `ridge` for float32.
 
 ---
@@ -168,7 +169,7 @@ Parameters (both dtypes):
 - `ridge`: small diagonal stabilizer (default: `1e-10`; f32 may need larger values on difficult grids)
 - `normalize`: None / `"mean"` / `"median"` (default: `"mean"`)
 - `eps`: numerical floor for stability (default: `1e-10`; f32 may need larger values on difficult grids)
-- `merge_x_tol`: optional tolerance (in input-x units) to merge near-duplicate sampling points by base-weighted averaging before solving
+- `merge_x_tol`: tolerance (in input-x units) to merge near-duplicate sampling points by base-weighted averaging before solving (default: `1e-2`, set to `None` to disable)
 - `parallel`: parallelize across series (Rayon). Recommended when S is large. (default: `True`)
 - `tuning`: optional tuple
   - for Tukey/Huber/Cauchy/Welsch/Fair: `(0,0,c)`
@@ -225,7 +226,6 @@ z32 = whitsmooth_rust.robust_whittaker_irls_f32(
     ridge=1e-6,
     normalize="mean",
     eps=1e-6,
-    merge_x_tol=None,
     parallel=True,
     tuning=None,
     return_weights=False
