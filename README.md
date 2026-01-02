@@ -18,9 +18,9 @@ This package provides both **float64** and **float32** implementations.
 
 We solve a Whittaker-type penalized least squares problem for each series `s`:
 
-\[
+$$
 \min_{z_s}\; \sum_{t=1}^T w_{s,t}(y_{s,t}-z_{s,t})^2 + \lambda \lVert D z_s \rVert^2
-\]
+$$
 
 - `y_{s,t}`: observation
 - `w_{s,t} >= 0`: weight (0 means missing/ignored)
@@ -29,18 +29,18 @@ We solve a Whittaker-type penalized least squares problem for each series `s`:
 
 The normal equations are:
 
-\[
+$$
 (\operatorname{diag}(w_s) + \lambda D^\top D + \text{ridge} I) z_s = w_s \odot y_s
-\]
+$$
 
 `P = D^T D` is **symmetric positive semidefinite** and **banded** with half-bandwidth `k = 2d`.
 We store only the **lower band** `Pb[j, i] = P[i, i-j]`.
 
 We solve each system using an **SPD banded Cholesky** factorization:
 
-\[
+$$
 A = L L^\top
-\]
+$$
 
 which exploits symmetry and banded structure.
 
@@ -58,9 +58,9 @@ Robust smoothing down-weights outliers by iterating:
 
 Final weights per entry are:
 
-\[
+$$
 w_{total} = w_{base} \cdot w_{rob}
-\]
+$$
 
 Supported robust weight functions:
 
