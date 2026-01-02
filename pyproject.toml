@@ -10,3 +10,8 @@ dependencies = ["numpy"]
 description = "Batched robust Whittaker smoother (divided differences) implemented in Rust (PyO3)."
 readme = "README.md"
 license = { text = "MIT" }
+
+[project.urls]
+Homepage = "https://github.com/MarcYin/whitsmooth_rust_repo"
+Repository = "https://github.com/MarcYin/whitsmooth_rust_repo"
+Issues = "https://github.com/MarcYin/whitsmooth_rust_repo/issues"
