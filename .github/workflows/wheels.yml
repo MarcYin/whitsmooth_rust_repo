@@ -64,30 +64,16 @@ jobs:
 
   macos:
     name: macOS ${{ matrix.platform.runner }} (${{ matrix.platform.target }}, py${{ matrix.python-version }})
-    if: ${{ github.event_name == 'workflow_dispatch' || !matrix.platform.only_dispatch }}
     runs-on: ${{ matrix.platform.runner }}
     strategy:
       fail-fast: false
       matrix:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
         platform:
-          # Stable runners (used on tag builds).
           - runner: macos-15-intel
             target: x86_64
-            only_dispatch: false
           - runner: macos-14
             target: aarch64
-            only_dispatch: false
-          # Extra runners for manual validation (workflow_dispatch only).
-          - runner: macos-latest
-            target: aarch64
-            only_dispatch: true
-          - runner: macos-15
-            target: aarch64
-            only_dispatch: true
-          - runner: macos-26
-            target: aarch64
-            only_dispatch: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -107,6 +93,36 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: wheels-macos-${{ matrix.platform.runner }}-${{ matrix.platform.target }}-py${{ matrix.python-version }}
+          path: dist/*.whl
+
+  macos-extra:
+    name: macOS ${{ matrix.runner }} (aarch64, py${{ matrix.python-version }})
+    if: ${{ github.event_name == 'workflow_dispatch' }}
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14"]
+        runner: [macos-latest, macos-15, macos-26]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: aarch64
+          args: >-
+            --release
+            --strip
+            --out dist
+            -m Cargo.toml
+            -i python
+      - name: Upload wheels
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-macos-${{ matrix.runner }}-aarch64-py${{ matrix.python-version }}
           path: dist/*.whl
 
   sdist:
