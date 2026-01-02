@@ -510,12 +510,23 @@ fn solve_one_series_f32(
         }
     }
 
-    if rhs.iter().all(|v| v.is_finite()) {
+    let max_abs_rhs = rhs.iter().fold(0.0_f32, |acc, &v| {
+        if v.is_finite() { acc.max(v.abs()) } else { acc }
+    });
+    let max_abs_y = y.iter().fold(0.0_f32, |acc, &v| {
+        if v.is_finite() { acc.max(v.abs()) } else { acc }
+    });
+    let baseline = max_abs_y.max(1.0_f32);
+
+    let need_f64 = !rhs.iter().all(|v| v.is_finite())
+        // Catch "finite but clearly wrong" blow-ups; threshold intentionally conservative.
+        || max_abs_rhs > baseline * 1.0e6_f32;
+    if !need_f64 {
         out.copy_from_slice(&rhs);
         return;
     }
 
-    // Fallback to mixed-precision (f64) solve when the f32 factorization becomes unstable.
+    // Mixed-precision (f64) fallback when the f32 solve becomes unstable.
     solve_one_series_f32_f64(pb, n, k, w, y, lam, ridge, eps, out);
 }
 
@@ -1291,8 +1302,9 @@ fn robust_whittaker_irls_f64<'py>(
 /// Notes
 /// -----
 /// Same API as `robust_whittaker_irls_f64`, but returns float32 output. For highly irregular or
-/// near-duplicate `x`, the internal float32 solve can become numerically unstable; this function
-/// automatically falls back to a float64 solve when needed (and casts back to float32).
+/// near-duplicate `x`, or when large portions of a series are missing (e.g. long NaN tails), the
+/// internal float32 solve can become ill-conditioned. This function automatically falls back to a
+/// float64 solve when it detects numerical instability (and casts back to float32).
 ///
 /// If `merge_x_tol > 0`, adjacent `x` values within that spacing are merged (in input-x units)
 /// using a base-weighted mean of observations. The solve runs on the compressed grid and the
@@ -1443,9 +1455,24 @@ fn robust_whittaker_irls_f32<'py>(
         )
     };
 
-    // f32 can become numerically unstable for very uneven/near-duplicate x spacing. If that happens,
-    // fall back to an f64 solve (using an f64-built penalty) and cast back to f32.
-    let need_f64 = !z_work.iter().all(|v| v.is_finite()) || !wtot_work.iter().all(|v| v.is_finite());
+    // f32 can become numerically unstable for very uneven/near-duplicate x spacing, and also when
+    // many observations are missing (esp. long missing tails). If that happens, fall back to an
+    // f64 solve (using an f64-built penalty) and cast back to f32.
+    let blow_up = (0..s).any(|si| {
+        let max_abs_z = z_work.row(si).iter().fold(0.0_f32, |acc, &v| {
+            if v.is_finite() { acc.max(v.abs()) } else { acc }
+        });
+        let max_abs_y = y.row(si).iter().fold(0.0_f32, |acc, &v| {
+            if v.is_finite() { acc.max(v.abs()) } else { acc }
+        });
+        let baseline = max_abs_y.max(1.0_f32);
+        max_abs_z > baseline * 1.0e6_f32
+    });
+
+    let need_f64 = !z_work.iter().all(|v| v.is_finite())
+        || !wtot_work.iter().all(|v| v.is_finite())
+        // Catch "finite but clearly wrong" blow-ups (threshold intentionally conservative).
+        || blow_up;
     if need_f64 {
         let x_use64: Vec<f64> = x_use.iter().map(|&v| v as f64).collect();
         let (pb_vec64, k64, n64) = build_pb_from_x_f64(&x_use64, d, eps as f64);
@@ -1828,5 +1855,99 @@ mod tests {
         assert_eq!(w_exp.shape(), &[1, n_orig]);
         assert!(z_exp.iter().all(|v| v.is_finite()), "expanded z contains non-finite values");
         assert!(w_exp.iter().all(|v| v.is_finite()), "expanded weights contain non-finite values");
+    }
+
+    #[test]
+    fn robust_irls_f32_merge_x_tol_trailing_nans_stable() {
+        let x: [f32; 53] = [
+            0.00000000e+00_f32, 2.63310187e-02_f32, 3.02673602e+00_f32, 4.02767372e+00_f32,
+            1.50279627e+01_f32, 1.69971294e+01_f32, 1.70008335e+01_f32, 1.70262032e+01_f32,
+            1.90286694e+01_f32, 2.70253944e+01_f32, 2.70323620e+01_f32, 3.10246525e+01_f32,
+            3.20236130e+01_f32, 3.20236473e+01_f32, 3.20317345e+01_f32, 3.20317574e+01_f32,
+            3.30048599e+01_f32, 3.40006714e+01_f32, 3.40007744e+01_f32, 3.50341187e+01_f32,
+            3.60265388e+01_f32, 3.70327072e+01_f32, 3.70340500e+01_f32, 3.80329742e+01_f32,
+            4.00268860e+01_f32, 4.00287170e+01_f32, 4.10296173e+01_f32, 4.10329170e+01_f32,
+            5.80326042e+01_f32, 6.00260086e+01_f32, 6.70268250e+01_f32, 7.50326004e+01_f32,
+            7.80259247e+01_f32, 7.80322571e+01_f32, 8.00325699e+01_f32, 8.20315170e+01_f32,
+            1.09034401e+02_f32, 1.18034927e+02_f32, 1.21032341e+02_f32, 1.24026566e+02_f32,
+            1.24027306e+02_f32, 1.25026375e+02_f32, 1.25027596e+02_f32, 1.31028046e+02_f32,
+            1.32027206e+02_f32, 1.33027740e+02_f32, 1.34028137e+02_f32, 1.44033661e+02_f32,
+            1.45013535e+02_f32, 1.46011627e+02_f32, 1.46025375e+02_f32, 1.46025406e+02_f32,
+            1.46029343e+02_f32,
+        ];
+        let mut y: [f32; 53] = [
+            0.6290387_f32, 0.6304045_f32, 0.6591430_f32, 0.64829564_f32, 0.6402782_f32,
+            0.6406342_f32, 0.64828616_f32, 0.6303828_f32, 0.6483001_f32, 0.6462810_f32,
+            0.6514024_f32, 0.61600894_f32, 0.6621996_f32, 0.6100803_f32, 0.6748406_f32,
+            0.6165653_f32, 0.53618_f32, f32::NAN, 0.5469687_f32, 0.58047014_f32,
+            0.60227007_f32, 0.3830874_f32, 0.5945248_f32, 0.46407568_f32, 0.3776188_f32,
+            0.56584877_f32, 0.5451473_f32, 0.59275806_f32, 0.5730731_f32, 0.5221283_f32,
+            0.46862745_f32, 0.65456235_f32, 0.6656672_f32, 0.68882096_f32, 0.67919797_f32,
+            0.6992728_f32, 0.76031214_f32, 0.7839335_f32, 0.7466595_f32, 0.6589886_f32,
+            0.66906095_f32, 0.6403982_f32, 0.6013683_f32, 0.7091882_f32, 0.6865953_f32,
+            0.6635514_f32, 0.6495238_f32, 0.6129259_f32, f32::NAN, 0.7133333_f32,
+            0.6148909_f32, 0.60245466_f32, 0.63146067_f32,
+        ];
+
+        // Create a prolonged missing tail.
+        for i in 40..y.len() {
+            y[i] = f32::NAN;
+        }
+
+        let n_orig = x.len();
+        let (x_comp, ranges) = compress_x_f32(&x, 1e-2_f32);
+        let x_use = normalize_x_unit_step_f32(&x_comp, "mean");
+        let (pb_vec, k, n) = build_pb_from_x_f32(&x_use, 2, 1e-10_f32);
+
+        let mut y_merge = Array2::<f32>::zeros((1, n));
+        let mut w_merge = Array2::<f32>::zeros((1, n));
+        for (gi, &(start, end)) in ranges.iter().enumerate() {
+            let mut sum_w = 0.0_f64;
+            let mut sum_wy = 0.0_f64;
+            for i in start..end {
+                let yv = y[i] as f64;
+                if yv.is_finite() {
+                    sum_w += 1.0;
+                    sum_wy += yv;
+                }
+            }
+            if sum_w > 0.0 {
+                y_merge[(0, gi)] = (sum_wy / sum_w) as f32;
+                w_merge[(0, gi)] = sum_w as f32;
+            }
+        }
+
+        let (z_work, _wtot_work) = robust_irls_f32(
+            &pb_vec,
+            n,
+            k,
+            y_merge.view(),
+            w_merge.view(),
+            10.0_f32,
+            1e-10_f32,
+            2,
+            Weighting::Tukey,
+            (0.0_f32, 0.0_f32, 4.685_f32),
+            "mad",
+            1e-10_f32,
+            false,
+        );
+
+        let mut z_exp = Array2::<f32>::zeros((1, n_orig));
+        for (gi, &(start, end)) in ranges.iter().enumerate() {
+            let zg = z_work[(0, gi)];
+            for i in start..end {
+                z_exp[(0, i)] = zg;
+            }
+        }
+
+        let max_abs_z = z_exp
+            .iter()
+            .fold(0.0_f32, |acc, &v| if v.is_finite() { acc.max(v.abs()) } else { acc });
+        assert!(
+            max_abs_z < 1.0e6_f32,
+            "z appears to blow up (max |z| = {})",
+            max_abs_z
+        );
     }
 }

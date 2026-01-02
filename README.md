@@ -134,6 +134,10 @@ to disable). Options:
 - Tune `merge_x_tol` to merge adjacent points within a tolerance (in input-x units).
 - Increase `eps` and/or `ridge` for float32.
 
+Long runs of **missing values** (especially missing tails) reduce the data constraints at the edges and can also make
+the float32 solve ill-conditioned. Mitigations: use `robust_whittaker_irls_f64`, increase `ridge`/`eps`, use
+`weighting="huber"`, or reduce `iterations`.
+
 ---
 
 ## API overview
