@@ -30,7 +30,7 @@ $$
 The normal equations are:
 
 $$
-(\operatorname{diag}(w_s) + \lambda D^\top D + \text{ridge} I) z_s = w_s \odot y_s
+(\mathrm{diag}(w_s) + \lambda D^\top D + \text{ridge} I) z_s = w_s \odot y_s
 $$
 
 `P = D^T D` is **symmetric positive semidefinite** and **banded** with half-bandwidth `k = 2d`.
@@ -231,7 +231,7 @@ If you don't need IRLS robustness, you can run a single solve (much cheaper):
 
 These solve:
 \[
-(\operatorname{diag}(w_s) + \lambda D^\top D + \text{ridge} I) z_s = w_s \odot y_s
+(\mathrm{diag}(w_s) + \lambda D^\top D + \text{ridge} I) z_s = w_s \odot y_s
 \]
 with no robust reweighting.
 
